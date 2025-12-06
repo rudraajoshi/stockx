@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stock Holder</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <style>
+    .main-content {
+      margin-left: 250px;
+      padding: 20px;
+    }
+
+    .txn-card {
+      background: #0c0c0c;
+      border-left: 6px solid #007bff;
+      border-radius: 10px;
+      padding: 15px 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: 0.3s ease;
+    }
+
+    .txn-card.buy {
+      border-left-color: green;
+    }
+
+    .txn-card.sell {
+      border-left-color: red;
+    }
+
+    .txn-card:hover {
+      transform: scale(1.02);
+    }
+
+    .txn-header {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .txn-detail {
+      font-size: 15px;
+      color: #b3afaf;
+      margin-bottom: 4px;
+    }
+
+    .txn-timestamp {
+      font-size: 13px;
+      color: #777;
+      margin-top: 6px;
+    }
+
+    .txn-total-price {
+      font-size: 16px;
+      color: #fff;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>StockX</h2>
+    <ul>
+      <li><a href="{{ url_for('index') }}">📊 Market Analysis</a></li>
+      <li><a href="{{ url_for('buy') }}">💰 Buy Stocks</a></li>
+      <li><a href="{{ url_for('sell') }}">📉 Sell Holdings</a></li>
+      <li><a href="{{ url_for('predict') }}">🔮 Stock Predictions</a></li>
+      <li class="active"><a href="{{ url_for('holder') }}">📁 Stock Holder</a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header>
+      <h1>📁 Stock Holder</h1>
+      <div class="user-login">
+        <a href="{{ url_for('login') }}" id="loginBtn" class="login-button">Login</a>
+        <a href="{{ url_for('signup') }}" id="signupBtn" class="login-button">Sign Up</a>
+        <a href="#" id="logoutBtn" class="login-button" style="display: none;">Logout</a>
+      </div>
+    </header>
+
+    {% if transactions %}
+    {% for txn in transactions %}
+        <div class="txn-card {{ 'buy' if txn['action'] == 'BUY' else 'sell' }}">
+            <div class="txn-header">{{ txn['action'] }} - {{ txn['company_name'] }} ({{ txn['symbol'] }})</div>
+            <div class="txn-detail">Quantity: <strong>{{ txn['quantity'] }}</strong></div>
+            <div class="txn-detail">Price per Share: $<strong>{{ txn['price'] }}</strong></div>
+            <div class="txn-total-price">
+                Total Price: $<strong>{{ txn['quantity'] * txn['price'] }}</strong>
+            </div>
+            <div class="txn-timestamp">{{ txn['timestamp'] }}</div>
+        </div>
+    {% endfor %}
+    {% else %}
+        <p>No transactions found.</p>
+    {% endif %}
+  </div>
+
+  <script>
+    window.onload = () => {
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const signupBtn = document.getElementById("signupBtn");
+      const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+
+      if (isLoggedIn) {
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+      } else {
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+      }
+
+      logoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        localStorage.removeItem("loggedIn");
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        alert("You have been logged out!");
+      });
+    };
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Predict Stocks</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>StockX</h2>
+    <ul>
+      <li><a href="{{ url_for('index') }}">📊 Market Analysis</a></li>
+      <li><a href="{{ url_for('buy') }}">💰 Buy Stocks</a></li>
+      <li><a href="{{ url_for('sell') }}">📉 Sell Holdings</a></li>
+      <li><a href="{{ url_for('predict') }}">🔮 Stock Predictions</a></li>
+      <li><a href="{{ url_for('holder') }}">📂 Stock Holder</a></li>
+    </ul>
+  </div>
+  
+  <!-- Main Content -->
+  <div class="main-content">
+    <header>
+      <h1>Stock Predictions</h1>
+      <div class="user-login">
+        <a href="{{ url_for('login') }}" id="loginBtn" class="login-button">Login</a>
+        <a href="{{ url_for('signup') }}" id="signupBtn" class="login-button">Sign Up</a>
+        <button id="logoutBtn" class="login-button" style="display: none;">Logout</button>
+      </div>
+    </header>
+
+    <!-- Prediction Input Section -->
+    <section class="predict-section">
+      <h2>Enter Stock Symbol</h2>
+      <input type="text" id="stockSymbol" placeholder="e.g. AAPL" />
+
+      <h2>Enter Number of Stocks</h2>
+      <input type="number" id="stockAmount" placeholder="e.g. 10" min="1" />
+
+      <button class="predict-button" onclick="predictStock()">Predict</button>
+      <div id="predictionResult" style="margin-top: 15px;"></div>
+    </section>
+
+    <!-- Chart Section -->
+    <section id="chartsContainer" class="chart-section" style="display: none;">
+      <h2>1 Stock Unit - Price Breakdown</h2>
+      <div class="chart-row">
+        <div class="chart-box"><canvas id="barChart"></canvas></div>
+        <div class="chart-box"><canvas id="pieChart"></canvas></div>
+      </div>
+
+      <h2>Total Value Comparison</h2>
+      <div class="chart-row">
+        <div class="chart-box"><canvas id="barChartTotal"></canvas></div>
+        <div class="chart-box"><canvas id="pieChartTotal"></canvas></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    let barChart, pieChart, barChartTotal, pieChartTotal;
+
+    function drawBarChart(data, symbol) {
+      if (barChart) barChart.destroy();
+      barChart = new Chart(document.getElementById("barChart"), {
+        type: "bar",
+        data: {
+          labels: ["Open", "Close"],
+          datasets: [{
+            label: `${symbol} - 1 Stock Price`,
+            data: [data.open, data.close],
+            backgroundColor: ["#36A2EB", "#4BC0C0"]
+          }]
+        }
+      });
+    }
+
+    function drawPieChart(data) {
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(document.getElementById("pieChart"), {
+        type: "pie",
+        data: {
+          labels: ["Open", "Close"],
+          datasets: [{
+            data: [data.open, data.close],
+            backgroundColor: ["#FFCE56", "#FF6384"]
+          }]
+        }
+      });
+    }
+
+    function drawBarChartTotal(data, symbol) {
+      if (barChartTotal) barChartTotal.destroy();
+      barChartTotal = new Chart(document.getElementById("barChartTotal"), {
+        type: "bar",
+        data: {
+          labels: ["Current Value", "Predicted Value"],
+          datasets: [{
+            label: `${symbol} - Total Value`,
+            data: [data.current, data.predicted],
+            backgroundColor: ["#9966FF", "#36A2EB"]
+          }]
+        }
+      });
+    }
+
+    function drawPieChartTotal(data) {
+      if (pieChartTotal) pieChartTotal.destroy();
+      pieChartTotal = new Chart(document.getElementById("pieChartTotal"), {
+        type: "pie",
+        data: {
+          labels: ["Current", "Predicted"],
+          datasets: [{
+            data: [data.current, data.predicted],
+            backgroundColor: ["#4BC0C0", "#FF9F40"]
+          }]
+        }
+      });
+    }
+
+    async function predictStock() {
+      const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+      const result = document.getElementById("predictionResult");
+      const chartsContainer = document.getElementById("chartsContainer");
+
+      if (!isLoggedIn) {
+        alert("Please log in or sign up to use the prediction feature.");
+        return;
+      }
+
+      const symbol = document.getElementById("stockSymbol").value.trim().toUpperCase();
+      const amount = parseInt(document.getElementById("stockAmount").value);
+
+      if (!symbol || isNaN(amount) || amount <= 0) {
+        result.innerHTML = "<span style='color:red;'>Please enter a valid stock symbol and number of stocks!</span>";
+        chartsContainer.style.display = "none";
+        return;
+      }
+
+      try {
+        const response = await fetch("/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol, amount })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          result.innerHTML = `<span style="color:red;">${data.error}</span>`;
+          chartsContainer.style.display = "none";
+          return;
+        }
+
+        result.innerHTML = `
+          <strong>${symbol}</strong><br><br>
+          <strong>1 Stock:</strong><br>
+          Current Price: $${data.current_price} (${data.change_1_stock})<br><br>
+          <strong>Total for ${amount} Stocks:</strong><br>
+          Current Value: $${data.total_current}<br>
+          Predicted Value (1 year): $${data.total_predicted} (${data.change_total})
+        `;
+
+        drawBarChart({ open: data.open_price, close: data.current_price }, symbol);
+        drawPieChart({ open: data.open_price, close: data.current_price });
+        drawBarChartTotal({ current: data.total_current, predicted: data.total_predicted }, symbol);
+        drawPieChartTotal({ current: data.total_current, predicted: data.total_predicted });
+
+        chartsContainer.style.display = "block";
+
+      } catch (err) {
+        console.error("Prediction error:", err);
+        result.innerHTML = `<span style='color:red;'>An error occurred. Please try again later.</span>`;
+        chartsContainer.style.display = "none";
+      }
+    }
+
+    // Login UI toggle
+    window.onload = () => {
+      const loginBtn = document.getElementById("loginBtn");
+      const signupBtn = document.getElementById("signupBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+
+      if (isLoggedIn) {
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+
+        logoutBtn.addEventListener("click", () => {
+          localStorage.removeItem("loggedIn");
+          loginBtn.style.display = "inline-block";
+          signupBtn.style.display = "inline-block";
+          logoutBtn.style.display = "none";
+          alert("You have been logged out!");
+        });
+      } else {
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+      }
+    };
+  </script>
+</body>
+</html>

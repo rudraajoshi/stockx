@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Page Title</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  
+<body>
+  <div class="sidebar">
+    <h2>StockX</h2>
+    <ul>
+      <li><a href="{{ url_for('index') }}">📊 Market Analysis</a></li>
+      <li><a href="{{ url_for('buy') }}">💰 Buy Stocks</a></li>
+      <li><a href="{{ url_for('sell') }}">📉 Sell Holdings</a></li>
+      <li><a href="{{ url_for('predict') }}">🔮 Stock Predictions</a></li>
+      <li><a href="{{ url_for('holder') }}">📂 Stock Holder</a></li>
+    </ul>
+  </div>
+  
+  <div class="main-content">
+    <header>
+      <h1>Stock Market Dashboard</h1>
+      <div class="user-login">
+        <a href="{{ url_for('login') }}" id="loginBtn" class="login-button">Login</a>
+        <a href="{{ url_for('signup') }}" id="signupBtn" class="login-button">Sign Up</a>
+        <a href="#" id="logoutBtn" class="login-button" style="display: none;">Logout</a>
+      </div>
+    </header>
+
+    <section class="cards" id="stockCards">
+      <div class="card"><h3>Apple</h3><p id="apple">Loading...</p></div>
+      <div class="card"><h3>Tesla</h3><p id="tesla">Loading...</p></div>
+      <div class="card"><h3>Google</h3><p id="google">Loading...</p></div>
+      <div class="card"><h3>Microsoft</h3><p id="microsoft">Loading...</p></div>
+      <div class="card"><h3>Amazon</h3><p id="amazon">Loading...</p></div>
+      <div class="card"><h3>Meta</h3><p id="meta">Loading...</p></div>
+    </section>
+  </div>
+
+  <script>
+    const apiKey = "cvnv93pr01qppf59td90cvnv93pr01qppf59td9g"; // Replace with your actual key
+
+    const stocks = [
+      { symbol: "AAPL", elementId: "apple" },
+      { symbol: "TSLA", elementId: "tesla" },
+      { symbol: "GOOGL", elementId: "google" },
+      { symbol: "MSFT", elementId: "microsoft" },
+      { symbol: "AMZN", elementId: "amazon" },
+      { symbol: "META", elementId: "meta" }
+    ];
+
+    async function loadAllStocks() {
+      for (const stock of stocks) {
+        const url = `https://finnhub.io/api/v1/quote?symbol=${stock.symbol}&token=${apiKey}`;
+        const el = document.getElementById(stock.elementId);
+
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (!data || !data.c || !data.pc) {
+            el.textContent = "No data ❌";
+            continue;
+          }
+
+          const price = parseFloat(data.c).toFixed(2);
+          const prevClose = parseFloat(data.pc).toFixed(2);
+          const change = (price - prevClose).toFixed(2);
+          const percent = ((change / prevClose) * 100).toFixed(2);
+          const trend = change > 0 ? "📈" : change < 0 ? "📉" : "🔄";
+          const color = change > 0 ? "lightgreen" : change < 0 ? "salmon" : "gray";
+
+          el.innerHTML = `$${price} <span style="color:${color}">${trend} ${percent}%</span>`;
+        } catch (error) {
+          console.error("Error fetching data for", stock.symbol, error);
+          el.textContent = "Error ❌";
+        }
+      }
+    }
+
+    loadAllStocks();
+    setInterval(loadAllStocks, 60000);
+
+    // Login / Signup / Logout toggle behavior
+    window.onload = () => {
+      const loginBtn = document.getElementById("loginBtn");
+      const signupBtn = document.getElementById("signupBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+
+      const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+
+      function updateAuthButtons() {
+        if (localStorage.getItem("loggedIn") === "true") {
+          loginBtn.style.display = "none";
+          signupBtn.style.display = "none";
+          logoutBtn.style.display = "inline-block";
+        } else {
+          loginBtn.style.display = "inline-block";
+          signupBtn.style.display = "inline-block";
+          logoutBtn.style.display = "none";
+        }
+      }
+
+      // Initial toggle
+      updateAuthButtons();
+
+      // Logout logic
+      logoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        localStorage.removeItem("loggedIn");
+        alert("You have been logged out!");
+        updateAuthButtons();
+      });
+    };
+  </script>
+</body>
+</html>

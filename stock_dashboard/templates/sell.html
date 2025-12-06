@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sell Stocks</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>StockX</h2>
+    <ul>
+      <li><a href="{{ url_for('index') }}">📊 Market Analysis</a></li>
+      <li><a href="{{ url_for('buy') }}">💰 Buy Stocks</a></li>
+      <li><a href="{{ url_for('sell') }}">📉 Sell Holdings</a></li>
+      <li><a href="{{ url_for('predict') }}">🔮 Stock Predictions</a></li>
+      <li><a href="{{ url_for('holder') }}">📂 Stock Holder</a></li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header>
+      <h1>Sell Stocks</h1>
+      <div class="user-login">
+        <a href="{{ url_for('login') }}" id="loginBtn" class="login-button">Login</a>
+        <a href="{{ url_for('signup') }}" id="signupBtn" class="login-button">Sign Up</a>
+        <a href="#" id="logoutBtn" class="login-button" style="display: none;">Logout</a>
+      </div>
+    </header>
+
+    <section class="message-section">
+      {% if success_message %}
+        <div class="success-message">
+          <p>{{ success_message }}</p>
+        </div>
+        <script type="text/javascript">
+          alert("{{ success_message }}");
+          window.location.href = "{{ url_for('index') }}";
+        </script>
+      {% endif %}
+      {% if error %}
+        <div class="error-message">
+          <p>{{ error }}</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="cards">
+      {% for stock in stocks %}
+        <div class="card">
+          <h3>{{ stock.company_name }} ({{ stock.symbol }})</h3>
+          <p>Current Price: ${{ stock.price }}</p>
+          <form method="POST" class="sell-form">
+            <input type="hidden" name="symbol" value="{{ stock.symbol }}">
+            <label for="quantity">Quantity:</label>
+            <input type="number" name="quantity" required>
+            <button type="submit" class="sell-button">Sell Now</button>
+          </form>
+        </div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <!-- Login/Logout Toggle Script -->
+  <script>
+    window.onload = () => {
+      const isLoggedIn = localStorage.getItem("loggedIn");
+      const loginBtn = document.getElementById("loginBtn");
+      const signupBtn = document.getElementById("signupBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const sellForms = document.querySelectorAll(".sell-form");
+
+      if (isLoggedIn === "true") {
+        if (loginBtn) loginBtn.style.display = "none";
+        if (signupBtn) signupBtn.style.display = "none";
+        if (logoutBtn) logoutBtn.style.display = "inline-block";
+      } else {
+        if (logoutBtn) logoutBtn.style.display = "none";
+        if (loginBtn) loginBtn.style.display = "inline-block";
+        if (signupBtn) signupBtn.style.display = "inline-block";
+
+        // Prevent selling and alert only (no redirect)
+        sellForms.forEach(form => {
+          form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            alert("Please log in or sign up to sell stocks.");
+          });
+        });
+      }
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          localStorage.removeItem("loggedIn");
+          alert("You have been logged out!");
+          window.location.href = "{{ url_for('index') }}";
+        });
+      }
+    };
+  </script>
+</body>
+</html>

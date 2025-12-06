@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Buy Stocks</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h2>StockX</h2>
+    <ul>
+      <li><a href="{{ url_for('index') }}">📊 Market Analysis</a></li>
+      <li class="active"><a href="{{ url_for('buy') }}">💰 Buy Stocks</a></li>
+      <li><a href="{{ url_for('sell') }}">📉 Sell Holdings</a></li>
+      <li><a href="{{ url_for('predict') }}">🔮 Stock Predictions</a></li>
+      <li><a href="{{ url_for('holder') }}">📂 Stock Holder</a></li>
+    </ul>
+  </div>
+  
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header>
+      <h1>Buy Stocks</h1>
+      <div class="user-login">
+        <a href="{{ url_for('login') }}" id="loginBtn" class="login-button">Login</a>
+        <a href="{{ url_for('signup') }}" id="signupBtn" class="login-button">Sign Up</a>
+        <a href="#" id="logoutBtn" class="login-button" style="display: none;">Logout</a>
+      </div>
+    </header>
+
+    <section class="cards" id="stockCards">
+      {% for symbol in ['AAPL', 'TSLA', 'GOOGL', 'MSFT', 'AMZN', 'META'] %}
+      <div class="card" data-symbol="{{ symbol }}">
+        <h3>{{ symbol }}</h3>
+        <p id="{{ symbol }}">Loading...</p>
+        <button class="buy-button">Buy Now</button>
+      </div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <script>
+    const apiKey = "cvnv93pr01qppf59td90cvnv93pr01qppf59td9g"; // Replace with your Finnhub API key
+    const stocks = ["AAPL", "TSLA", "GOOGL", "MSFT", "AMZN", "META"];
+    const transactionHistory = [];
+  
+    async function fetchStock(symbol) {
+      const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+  
+        const currentPrice = parseFloat(data.c).toFixed(2);
+        const prevClose = parseFloat(data.pc).toFixed(2);
+        const change = (currentPrice - prevClose).toFixed(2);
+        const percent = ((change / prevClose) * 100).toFixed(2);
+        const trend = change > 0 ? "📈" : change < 0 ? "📉" : "🔄";
+        const color = change > 0 ? "lightgreen" : change < 0 ? "salmon" : "gray";
+  
+        document.getElementById(symbol).innerHTML = 
+          `Price: $${currentPrice} <span style="color:${color}">${trend} ${percent}%</span>`;
+  
+        document.querySelector(`.card[data-symbol="${symbol}"]`).setAttribute("data-price", currentPrice);
+      } catch (error) {
+        console.error(`Error loading ${symbol}:`, error);
+        document.getElementById(symbol).textContent = "Error ❌";
+      }
+    }
+  
+    function loadAllStocks() {
+      stocks.forEach(fetchStock);
+    }
+  
+    loadAllStocks();
+    setInterval(loadAllStocks, 60000); // Refresh every minute
+  
+    document.addEventListener("click", async function(e) {
+      if (e.target.classList.contains("buy-button") && !e.target.classList.contains("pay-button")) {
+        const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+
+        if (!isLoggedIn) {
+          alert("Please log in or sign up before buying stocks.");
+          return;
+        }
+
+        const card = e.target.closest(".card");
+        const symbol = card.getAttribute("data-symbol");
+
+        const quantity = prompt(`How many shares of ${symbol} do you want to buy?`);
+        if (!quantity || isNaN(quantity) || quantity <= 0) {
+          alert("Invalid quantity.");
+          return;
+        }
+
+        const response = await fetch("/api/buy", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ symbol, quantity: parseInt(quantity) })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          alert(data.error || "Something went wrong.");
+          return;
+        }
+
+        const total = parseFloat(data.total_cost).toFixed(2);
+
+        const existing = card.querySelector(".pay-button");
+        if (existing) existing.remove();
+
+        const confirmArea = document.createElement("div");
+        confirmArea.style.marginTop = "10px";
+        confirmArea.innerHTML = `
+          <p>Total: $${total}</p>
+          <button class="buy-button pay-button">Pay</button>
+        `;
+        card.appendChild(confirmArea);
+
+        confirmArea.querySelector(".pay-button").addEventListener("click", () => {
+          transactionHistory.push({
+            symbol,
+            quantity: parseInt(quantity),
+            total: parseFloat(total)
+          });
+
+          alert(`You bought ${quantity} share(s) of ${symbol} for $${total}`);
+          confirmArea.remove();
+          console.log("Transaction history:", transactionHistory);
+        });
+      }
+    });
+
+    window.onload = () => {
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const signupBtn = document.getElementById("signupBtn");
+      const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+
+      if (isLoggedIn) {
+        loginBtn.style.display = "none";
+        signupBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+      } else {
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+      }
+
+      logoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        localStorage.removeItem("loggedIn");
+        loginBtn.style.display = "inline-block";
+        signupBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        alert("You have been logged out!");
+      });
+    };
+  </script>
+</body>
+</html>
